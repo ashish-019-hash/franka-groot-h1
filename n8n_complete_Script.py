@@ -3611,6 +3611,7 @@ CAMERA_HEIGHT = 480
 DEFAULT_CAMERA_PRIM = "/World/EyeCamera"
 
 FORWARD_SPEED = 1.0
+H1_2_FORWARD_SPEED = 0.3  # H1_2 walks slowly
 QUERY_INTERVAL_SECONDS = 0.3
 WARMUP_SECONDS = 3.0
 ROBOT_STOP_DISTANCE = 1.5  # meters from object where H1 should stop
@@ -4956,7 +4957,7 @@ class H1GR00TRunner(object):
 
         if elapsed < self._warmup_seconds:
             self._h1.forward(step_size, np.array([self._forward_speed, 0.0, 0.0]))
-            self._h1_2.forward(step_size, np.array([self._forward_speed, 0.0, 0.0]))
+            self._h1_2.forward(step_size, np.array([H1_2_FORWARD_SPEED, 0.0, 0.0]))
             if self._physics_step_count % 200 == 0:
                 print(f"[H1] Warming up... {elapsed:.1f}s / {self._warmup_seconds}s")
             return
@@ -5059,7 +5060,7 @@ class H1GR00TRunner(object):
             self._h1.forward(step_size, np.array([self._forward_speed, 0.0, yaw_cmd]))
 
         # --- H1_2 always walks straight forward (does not stop) ---
-        self._h1_2.forward(step_size, np.array([self._forward_speed, 0.0, 0.0]))
+        self._h1_2.forward(step_size, np.array([H1_2_FORWARD_SPEED, 0.0, 0.0]))
 
     def run(self) -> None:
         print("")
