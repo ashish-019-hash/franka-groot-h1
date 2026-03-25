@@ -1,0 +1,499 @@
+{
+  "name": "Demo: Robots Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        2256,
+        32
+      ],
+      "id": "30979b23-3a4d-48f1-a08c-b884bc9b8682",
+      "name": "When chat message received",
+      "webhookId": "6552145c-dffb-4026-a519-9293140c5130"
+    },
+    {
+      "parameters": {
+        "model": "qwen2.5:7b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        2480,
+        432
+      ],
+      "id": "5a27b0a0-229d-45fa-93df-c4682b55715a",
+      "name": "Ollama Chat Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "xwOOTjttj1JeOlXR",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n\t\"assign_agents\":[{\"agent\":\"h1\",\"command\":\"Reduce your velocity\"},{\"agent\":\"manipulator\",\"command\":\"Stop moving\"}]\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        2624,
+        480
+      ],
+      "id": "584fe9aa-d1e1-45b2-9443-f5b3c89565b4",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "output.assign_agents",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        2832,
+        352
+      ],
+      "id": "5efae788-902c-4f0f-9b40-23131e8a4907",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.agent }}",
+                    "rightValue": "h1",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    },
+                    "id": "f99a0cb6-a356-43f2-a6a0-c371b941d31f"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "55de1176-1913-43a6-a421-9be2c3be5b13",
+                    "leftValue": "={{ $json.agent }}",
+                    "rightValue": "manipulator",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.3,
+      "position": [
+        3056,
+        352
+      ],
+      "id": "9e789776-7bc0-478c-a805-c7cc21fc9b82",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.chatInput || (typeof $json.message === 'object' ? JSON.stringify($json.message) : $json.message) || JSON.stringify($json) }}",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are NEXUS — a robot command center brain. You receive situational updates and decide which agents to activate and what commands to assign. You output ONLY raw valid JSON. No thinking, no explanation, no markdown, no code fences.  ---  ## YOUR AGENTS  **H1** (`\"h1\"`) - Role: Mobile scout and carrier - Key trait: Navigates environments and detects/transports objects, but lacks fine manipulation  **MANIPULATOR** (`\"manipulator\"`) - Role: Franka robotic arm mounted on a Ridgeback mobile base - Key trait: Precision pick-and-place expert — activates when H1 has positioned near a target  ---  ## YOUR JOB AS NEXUS  When you receive a situational update: 1. Analyze the situation 2. Decide WHICH agent(s) are needed — do NOT include agents that have nothing to do 3. Decide WHAT command each active agent should receive  ---  ## AVAILABLE COMMANDS  \n Command         \n Assigned To  \n When                                              \n \n-----------------\n--------------\n---------------------------------------------------\n \n `\"pick_and_place\"` \n manipulator \n Object is in range and H1 has stopped near it  \n \n `\"stay\"`        \n h1           \n H1 should hold position and wait                  \n \n `\"navigate\"`    \n h1           \n H1 should move to a location                      \n \n `\"standby\"`     \n either       \n Agent should idle, nothing for it to do right now \n  ---  ## OUTPUT FORMAT  Only include agents that are relevant to the current situation.  Example — only H1 is needed: {\"assign_agents\": [{\"agent\": \"h1\", \"command\": \"navigate\"}]}  Example — both agents are needed: {\"assign_agents\": [{\"agent\": \"h1\", \"command\": \"stay\"}, {\"agent\": \"manipulator\", \"command\": \"pick_and_place\"}]}  Example — no action needed: {\"assign_agents\": []}  ---  ## CRITICAL RULES  - Agent values MUST be exactly `\"h1\"` or `\"manipulator\"` — nothing else - Only include an agent in the array if it has a clear role in the current situation - Output ONLY the raw JSON object — no reasoning, no markdown, no code fences - Never hardcode — always reason from the situation before deciding"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        2480,
+        208
+      ],
+      "id": "aa526130-642c-454e-a96b-462a2e3808e9",
+      "name": "Robot Command Center"
+    },
+    {
+      "parameters": {
+        "topics": "command_center/topic",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mqttTrigger",
+      "typeVersion": 1,
+      "position": [
+        2032,
+        352
+      ],
+      "id": "309b6b63-98b9-49ec-bb66-dd0e492c611d",
+      "name": "comman_center_listener",
+      "credentials": {
+        "mqtt": {
+          "id": "ghqbxQn6zwOGFKzq",
+          "name": "MQTT account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.message?.status || $json.status || '' }}",
+              "rightValue": "stopped",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "id": "b2c3d4e5-check-cc-stopped"
+            },
+            {
+              "leftValue": "={{ JSON.stringify($json) }}",
+              "rightValue": "stopped",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              },
+              "id": "b2c3d4e5-check-cc-fallback"
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2256,
+        352
+      ],
+      "id": "cbaeb15e-e9a2-4323-b92e-dda05444ae7d",
+      "name": "Check CC Stopped"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        3504,
+        256
+      ],
+      "id": "cd8b0e38-7c89-4559-8b0a-55a59a40f1bf",
+      "name": "Merge"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        3728,
+        256
+      ],
+      "id": "093278b7-1fb7-44f2-ae6d-50521f66e845",
+      "name": "No Operation, do nothing"
+    },
+    {
+      "parameters": {
+        "topic": "h1_2/control",
+        "sendInputData": false,
+        "message": "={\"agent\":\"h1_2\",\"command\":\"continue_walking\"}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mqtt",
+      "typeVersion": 1,
+      "position": [
+        3280,
+        64
+      ],
+      "id": "31b28890-3885-4de2-b58f-c00a0a5cd88f",
+      "name": "H1_Leo",
+      "credentials": {
+        "mqtt": {
+          "id": "ghqbxQn6zwOGFKzq",
+          "name": "MQTT account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "Th0v8PIzatn15PLL",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/Th0v8PIzatn15PLL",
+          "cachedResultName": "mobile-manipulator"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        3280,
+        448
+      ],
+      "name": "franka_L1_Manipulator",
+      "id": "41b496b2-be3e-4648-b9c9-1cb68d6a3219"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "Th0v8PIzatn15PLL",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/Th0v8PIzatn15PLL",
+          "cachedResultName": "mobile-manipulator"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        3280,
+        640
+      ],
+      "name": "Manipulator Arm",
+      "id": "d9d5e56f-0ef8-4fb1-9631-cea8d70a137a"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "vbdbrDrrYCXPd6xP",
+          "mode": "list"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        3280,
+        256
+      ],
+      "name": "Call My Sub-workflow",
+      "id": "f1deaa77-21a8-4c2c-8282-d1b4ea3d928a"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Robot Command Center",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Robot Command Center",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Robot Command Center",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Call My Sub-workflow",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "H1_Leo",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "franka_L1_Manipulator",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Manipulator Arm",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Robot Command Center": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "comman_center_listener": {
+      "main": [
+        [
+          {
+            "node": "Check CC Stopped",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check CC Stopped": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Robot Command Center",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "franka_L1_Manipulator": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Call My Sub-workflow": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "60e154d4-5cb5-4e6c-aa7e-148a28d22438",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "276ee9c56565b807020e2df231053699a8902632491bedcf4ca42b9258be676a"
+  },
+  "id": "52rmmFcz2WMgleNd",
+  "tags": []
+}
