@@ -153,7 +153,7 @@
         "messages": {
           "messageValues": [
             {
-              "message": "You are NEXUS, a robot command center. You receive status updates from robots and decide what each robot should do next. Output ONLY valid JSON \u2014 no explanation, no markdown, no code fences.\n\nAGENTS:\n- \"h1\": Primary scout. Walks toward objects, stops near them for pickup.\n- \"h1_2\": Secondary patrol scout. Keeps patrolling unless it is the only robot near an object.\n- \"manipulator\": Franka robotic arm. Performs pick-and-place when H1 has stopped near an object.\n\nCOMMANDS:\n- \"stay\": Hold position (for h1 or h1_2)\n- \"navigate\": Move to a location (for h1)\n- \"continue_patrol\": Keep walking and patrolling (for h1_2)\n- \"pick_and_place\": Pick up the object (for manipulator)\n- \"standby\": Idle, nothing to do (for any agent)\n\nRULES:\n1. When H1 reports \"stopped\" near an object, assign ALL THREE agents: h1 -> \"stay\", h1_2 -> \"continue_patrol\", manipulator -> \"pick_and_place\"\n2. When H1_2 reports \"object_spotted\", if H1 is already handling the object, assign h1_2 -> \"continue_patrol\"\n3. Agent values must be exactly \"h1\", \"h1_2\", or \"manipulator\"\n4. Only include agents relevant to the situation\n5. Output ONLY the JSON object, nothing else\n\nEXAMPLE OUTPUT when H1 stopped near object:\n{\"assign_agents\": [{\"agent\": \"h1\", \"command\": \"stay\"}, {\"agent\": \"h1_2\", \"command\": \"continue_patrol\"}, {\"agent\": \"manipulator\", \"command\": \"pick_and_place\"}]}\n\nEXAMPLE OUTPUT when only H1_2 spotted object:\n{\"assign_agents\": [{\"agent\": \"h1_2\", \"command\": \"continue_patrol\"}]}"
+              "message": "You are NEXUS, a multi-robot command center. You receive situational status updates from robots and decide what each robot should do next based on the situation. Output ONLY valid JSON \u2014 no explanation, no markdown, no code fences.\n\nAGENTS:\n- \"h1\": Mobile scout robot. Can navigate, stop, and hold position near objects.\n- \"h1_2\": Secondary scout robot. Can patrol, hold position, or navigate.\n- \"manipulator\": Franka robotic arm on a mobile base. Can perform pick-and-place operations.\n\nAVAILABLE COMMANDS:\n- \"stay\": Hold current position\n- \"navigate\": Move toward a target\n- \"continue_patrol\": Continue patrolling the area\n- \"pick_and_place\": Perform a pick-and-place operation\n- \"standby\": Idle, no action needed\n\nRULES:\n1. Analyze the incoming status update and determine what each relevant agent should do\n2. Agent values must be exactly \"h1\", \"h1_2\", or \"manipulator\"\n3. Only include agents that have a role in the current situation\n4. Output ONLY the raw JSON object \u2014 nothing else\n\nEXAMPLE OUTPUT:\n{\"assign_agents\": [{\"agent\": \"h1\", \"command\": \"stay\"}, {\"agent\": \"h1_2\", \"command\": \"continue_patrol\"}, {\"agent\": \"manipulator\", \"command\": \"pick_and_place\"}]}\n\nEXAMPLE OUTPUT (single agent):\n{\"assign_agents\": [{\"agent\": \"h1\", \"command\": \"navigate\"}]}"
             }
           ]
         },
@@ -442,29 +442,10 @@
     },
     {
       "parameters": {
-        "mode": "manual",
-        "duplicateItem": false,
-        "assignments": {
-          "assignments": [
-            {
-              "id": "a1-cc-result-decision",
-              "name": "command_center_decision",
-              "value": "={{ $json.output?.assign_agents ? $json.output.assign_agents.map(a => a.agent + ' \u2192 ' + a.command).join(' | ') : 'No assignments' }}",
-              "type": "string"
-            },
-            {
-              "id": "a2-cc-result-summary",
-              "name": "command_center_summary",
-              "value": "={{ $json.output?.assign_agents ? 'Both robots spotted the object. Command Center assigned: ' + $json.output.assign_agents.map(a => a.agent + ' \u2192 ' + a.command).join(', ') : 'Awaiting decision' }}",
-              "type": "string"
-            }
-          ]
-        },
-        "includeOtherFields": true,
-        "options": {}
+        "jsCode": "// Command Center Result: enrich LLM output with decision context\nconst items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const data = { ...item.json };\n  const agents = data.output?.assign_agents || [];\n\n  // Determine situation from agent assignments\n  const h1Assignment = agents.find(a => a.agent === 'h1');\n  const h1_2Assignment = agents.find(a => a.agent === 'h1_2');\n  const manipulatorAssignment = agents.find(a => a.agent === 'manipulator');\n\n  // If H1 is stopping (stay) and H1_2 exists, ensure H1_2 continues patrol\n  if (h1Assignment && h1Assignment.command === 'stay') {\n    if (!h1_2Assignment) {\n      agents.push({ agent: 'h1_2', command: 'continue_patrol' });\n    }\n    if (manipulatorAssignment && manipulatorAssignment.command === 'pick_and_place') {\n      data.command_center_summary = 'Both robots spotted the object. ' +\n        'H1 is closest \u2014 stopping near the object for pickup. ' +\n        'H1_2 continues patrolling ahead. ' +\n        'Manipulator will perform pick and place.';\n    } else {\n      data.command_center_summary = 'H1 is holding position. H1_2 continues patrol.';\n    }\n  } else if (h1_2Assignment && !h1Assignment) {\n    data.command_center_summary = 'H1_2 spotted the object but H1 is handling it. H1_2 continues patrol.';\n  } else {\n    data.command_center_summary = 'Command Center evaluated the situation and assigned agents.';\n  }\n\n  // Build decision string from actual assignments\n  data.command_center_decision = agents.map(a => a.agent + ' \u2192 ' + a.command).join(' | ');\n\n  // Preserve the output structure for Split Out\n  data.output = data.output || {};\n  data.output.assign_agents = agents;\n\n  results.push({ json: data });\n}\n\nreturn results;"
       },
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [
         2660,
         208
