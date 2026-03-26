@@ -377,6 +377,21 @@
           "name": "MQTT account"
         }
       }
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"output\": {\n    \"assign_agents\": [\n      {\"agent\": \"h1\", \"command\": \"stay\"},\n      {\"agent\": \"h1_2\", \"command\": \"continue_patrol\"},\n      {\"agent\": \"manipulator\", \"command\": \"pick_and_place\"}\n    ]\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2560,
+        560
+      ],
+      "id": "f3a4b5c6-cc-decision-node",
+      "name": "CC Decision: H1 Stop, H1_2 Patrol"
     }
   ],
   "pinData": {},
@@ -486,7 +501,7 @@
       "main": [
         [
           {
-            "node": "Split Out",
+            "node": "CC Decision: H1 Stop, H1_2 Patrol",
             "type": "main",
             "index": 0
           }
@@ -494,6 +509,17 @@
         [
           {
             "node": "Robot Command Center",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CC Decision: H1 Stop, H1_2 Patrol": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
             "type": "main",
             "index": 0
           }
