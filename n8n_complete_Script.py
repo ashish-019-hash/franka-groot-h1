@@ -3632,8 +3632,11 @@ MQTT_CAMERA_TOPIC = "h1/camera/image_stream"  # n8n H1 sub-workflow listens on t
 MQTT_H1_STATUS_TOPIC = "h1/status"  # n8n main workflow listens for H1 stopped/walking
 MQTT_COMMAND_CENTER_TOPIC = "command_center/topic"  # n8n command center listener
 MQTT_FRANKA_CONTROL_TOPIC = "franka/control"  # n8n command center sends Franka trigger here
+MQTT_H1_2_STATUS_TOPIC = "h1_2/status"  # H1_2 publishes status (object_spotted, walking, etc.)
 MQTT_CAMERA_PUBLISH_RATE_HZ = 2  # publish camera images via MQTT at ~2 Hz
 ROS2_FRANKA_TRIGGER_TOPIC = "/franka/trigger"  # ROS2 topic from MQTT-ROS2 bridge for Franka trigger
+
+H1_2_SPOT_DISTANCE = 5.0  # meters — H1_2 reports object_spotted when within this distance
 
 
 # ---- Stabilized camera helper functions (from H1 robot script) ----
@@ -4355,6 +4358,8 @@ class H1GR00TRunner(object):
         self._mqtt_last_publish_time = 0.0
         self._mqtt_publish_interval = 1.0 / MQTT_CAMERA_PUBLISH_RATE_HZ
         self._mqtt_h1_status_published = False
+        self._h1_2_object_spotted = False  # True once H1_2 is within H1_2_SPOT_DISTANCE of object
+        self._h1_2_status_published = False  # Ensure we only publish H1_2 spotted once
         self._setup_mqtt()
 
         # --- ROS2 subscriber for Franka trigger (from MQTT-ROS2 bridge) ---
@@ -4527,6 +4532,34 @@ class H1GR00TRunner(object):
             print(f"[MQTT] Notified command center: {message}")
         except Exception as e:
             print(f"[MQTT] Error publishing H1 status: {e}")
+
+    def _publish_h1_2_status_mqtt(self, status, message):
+        """Publish H1_2 robot status to MQTT for n8n command center integration.
+
+        H1_2 publishes to h1_2/status (for the dedicated listener) and also
+        notifies the command center on command_center/topic.
+        """
+        if not self._mqtt_connected or self._mqtt_client is None:
+            return
+
+        try:
+            payload = json.dumps({
+                "agent": "h1_2",
+                "status": status,
+                "message": message,
+                "timestamp": time.time(),
+            })
+            self._mqtt_client.publish(MQTT_H1_2_STATUS_TOPIC, payload, qos=1)
+            print(f"[MQTT] Published H1_2 status: {status} -> {MQTT_H1_2_STATUS_TOPIC}")
+
+            center_payload = json.dumps({
+                "agent": "h1_2",
+                "message": message,
+            })
+            self._mqtt_client.publish(MQTT_COMMAND_CENTER_TOPIC, center_payload, qos=1)
+            print(f"[MQTT] Notified command center (H1_2): {message}")
+        except Exception as e:
+            print(f"[MQTT] Error publishing H1_2 status: {e}")
 
     def _setup_ros2_franka_subscriber(self):
         """Subscribe to /franka/trigger ROS2 topic (published by MQTT-ROS2 bridge).
@@ -5061,6 +5094,24 @@ class H1GR00TRunner(object):
 
         # --- H1_2 always walks straight forward (does not stop) ---
         self._h1_2.forward(step_size, np.array([H1_2_FORWARD_SPEED, 0.0, 0.0]))
+
+        # --- H1_2 object detection: publish status when near the object ---
+        if not self._h1_2_status_published:
+            h1_2_pos = None
+            try:
+                h1_2_pos, _ = self._h1_2.robot.get_world_pose()
+            except Exception:
+                pass
+            if h1_2_pos is not None:
+                h1_2_distance = np.linalg.norm(h1_2_pos[:2] - self._object_position[:2])
+                if h1_2_distance <= H1_2_SPOT_DISTANCE:
+                    self._h1_2_object_spotted = True
+                    self._h1_2_status_published = True
+                    print(f"[H1_2] Spotted object at distance={h1_2_distance:.2f}m (within {H1_2_SPOT_DISTANCE}m). Continuing patrol.")
+                    self._publish_h1_2_status_mqtt(
+                        "object_spotted",
+                        f"H1_2 spotted object at distance {h1_2_distance:.1f}m but is not the closest robot. Continuing patrol."
+                    )
 
     def run(self) -> None:
         print("")
