@@ -76,6 +76,28 @@
                 },
                 "conditions": [
                   {
+                    "id": "a1b2c3d4-h1-2-route",
+                    "leftValue": "={{ $json.agent }}",
+                    "rightValue": "h1_2",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
                     "leftValue": "={{ $json.agent }}",
                     "rightValue": "h1",
                     "operator": {
@@ -104,28 +126,6 @@
                     "operator": {
                       "type": "string",
                       "operation": "contains"
-                    }
-                  }
-                ],
-                "combinator": "and"
-              }
-            },
-            {
-              "conditions": {
-                "options": {
-                  "caseSensitive": true,
-                  "leftValue": "",
-                  "typeValidation": "strict",
-                  "version": 2
-                },
-                "conditions": [
-                  {
-                    "id": "a1b2c3d4-h1-2-route",
-                    "leftValue": "={{ $json.agent }}",
-                    "rightValue": "h1_2",
-                    "operator": {
-                      "type": "string",
-                      "operation": "equals"
                     }
                   }
                 ],
@@ -358,30 +358,25 @@
     },
     {
       "parameters": {
-        "workflowId": {
-          "__rl": true,
-          "value": "h1_2_workflow_id",
-          "mode": "list",
-          "cachedResultName": "h1_2"
-        },
-        "workflowInputs": {
-          "mappingMode": "defineBelow",
-          "value": {},
-          "matchingColumns": [],
-          "schema": [],
-          "attemptToConvertTypes": false,
-          "convertFieldsToString": true
-        },
+        "topic": "h1_2/control",
+        "sendInputData": false,
+        "message": "={\"agent\":\"h1_2\",\"command\":\"{{ $json.command }}\",\"message\":\"Command center instructs H1_2: {{ $json.command }}. H1 is handling the object, H1_2 should continue patrolling ahead.\"}",
         "options": {}
       },
-      "type": "n8n-nodes-base.executeWorkflow",
-      "typeVersion": 1.2,
+      "type": "n8n-nodes-base.mqtt",
+      "typeVersion": 1,
       "position": [
         3280,
         832
       ],
-      "name": "Call H1_2 Sub-workflow",
-      "id": "e2f3a4b5-h1-2-subworkflow"
+      "id": "e2f3a4b5-h1-2-mqtt-control",
+      "name": "H1_2 Control",
+      "credentials": {
+        "mqtt": {
+          "id": "ghqbxQn6zwOGFKzq",
+          "name": "MQTT account"
+        }
+      }
     }
   ],
   "pinData": {},
@@ -434,6 +429,13 @@
       "main": [
         [
           {
+            "node": "H1_2 Control",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
             "node": "Call My Sub-workflow",
             "type": "main",
             "index": 0
@@ -452,13 +454,6 @@
           },
           {
             "node": "Manipulator Arm",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Call H1_2 Sub-workflow",
             "type": "main",
             "index": 0
           }
