@@ -37,7 +37,7 @@
     },
     {
       "parameters": {
-        "jsonSchemaExample": "{\n\t\"assign_agents\":[{\"agent\":\"h1\",\"command\":\"Reduce your velocity\"},{\"agent\":\"manipulator\",\"command\":\"Stop moving\"}]\n}"
+        "jsonSchemaExample": "{\n\t\"assign_agents\":[{\"agent\":\"h1\",\"command\":\"Reduce your velocity\"},{\"agent\":\"h1_2\",\"command\":\"Continue patrolling\"},{\"agent\":\"manipulator\",\"command\":\"Stop moving\"}]\n}"
       },
       "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
       "typeVersion": 1.3,
@@ -109,6 +109,28 @@
                 ],
                 "combinator": "and"
               }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "a1b2c3d4-h1-2-route",
+                    "leftValue": "={{ $json.agent }}",
+                    "rightValue": "h1_2",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
             }
           ]
         },
@@ -131,7 +153,7 @@
         "messages": {
           "messageValues": [
             {
-              "message": "You are NEXUS — a robot command center brain. You receive situational updates and decide which agents to activate and what commands to assign. You output ONLY raw valid JSON. No thinking, no explanation, no markdown, no code fences.  ---  ## YOUR AGENTS  **H1** (`\"h1\"`) - Role: Mobile scout and carrier - Key trait: Navigates environments and detects/transports objects, but lacks fine manipulation  **MANIPULATOR** (`\"manipulator\"`) - Role: Franka robotic arm mounted on a Ridgeback mobile base - Key trait: Precision pick-and-place expert — activates when H1 has positioned near a target  ---  ## YOUR JOB AS NEXUS  When you receive a situational update: 1. Analyze the situation 2. Decide WHICH agent(s) are needed — do NOT include agents that have nothing to do 3. Decide WHAT command each active agent should receive  ---  ## AVAILABLE COMMANDS  \n Command         \n Assigned To  \n When                                              \n \n-----------------\n--------------\n---------------------------------------------------\n \n `\"pick_and_place\"` \n manipulator \n Object is in range and H1 has stopped near it  \n \n `\"stay\"`        \n h1           \n H1 should hold position and wait                  \n \n `\"navigate\"`    \n h1           \n H1 should move to a location                      \n \n `\"standby\"`     \n either       \n Agent should idle, nothing for it to do right now \n  ---  ## OUTPUT FORMAT  Only include agents that are relevant to the current situation.  Example — only H1 is needed: {\"assign_agents\": [{\"agent\": \"h1\", \"command\": \"navigate\"}]}  Example — both agents are needed: {\"assign_agents\": [{\"agent\": \"h1\", \"command\": \"stay\"}, {\"agent\": \"manipulator\", \"command\": \"pick_and_place\"}]}  Example — no action needed: {\"assign_agents\": []}  ---  ## CRITICAL RULES  - Agent values MUST be exactly `\"h1\"` or `\"manipulator\"` — nothing else - Only include an agent in the array if it has a clear role in the current situation - Output ONLY the raw JSON object — no reasoning, no markdown, no code fences - Never hardcode — always reason from the situation before deciding"
+              "message": "You are NEXUS — a robot command center brain. You receive situational updates and decide which agents to activate and what commands to assign. You output ONLY raw valid JSON. No thinking, no explanation, no markdown, no code fences.  ---  ## YOUR AGENTS  **H1** (`\"h1\"`) - Role: Primary mobile scout and carrier - Key trait: Navigates environments and detects/transports objects, but lacks fine manipulation. When H1 detects an object on the floor and is the closest robot, it should stop near the object.  **H1_2** (`\"h1_2\"`) - Role: Secondary patrol scout - Key trait: Continuously patrols the warehouse. Even if H1_2 also spots the object, if H1 is closer to the object, H1_2 should be instructed to continue patrolling ahead. H1_2 only stops if it is the closest robot to an object and no other robot is handling it.  **MANIPULATOR** (`\"manipulator\"`) - Role: Franka robotic arm mounted on a Ridgeback mobile base - Key trait: Precision pick-and-place expert — activates when H1 has positioned near a target  ---  ## YOUR JOB AS NEXUS  When you receive a situational update: 1. Analyze the situation 2. Decide WHICH agent(s) are needed — do NOT include agents that have nothing to do 3. Decide WHAT command each active agent should receive 4. When H1 stops near an object, ALWAYS instruct H1_2 to continue patrolling and instruct the manipulator to pick and place  ---  ## AVAILABLE COMMANDS  \n Command         \n Assigned To  \n When                                              \n \n-----------------\n--------------\n---------------------------------------------------\n \n `\"pick_and_place\"` \n manipulator \n Object is in range and H1 has stopped near it  \n \n `\"stay\"`        \n h1           \n H1 should hold position and wait                  \n \n `\"navigate\"`    \n h1           \n H1 should move to a location                      \n \n `\"continue_patrol\"` \n h1_2       \n H1_2 should keep walking and patrolling ahead     \n \n `\"stay\"`        \n h1_2         \n H1_2 should hold position (only if it is closest to an object) \n \n `\"standby\"`     \n any          \n Agent should idle, nothing for it to do right now \n  ---  ## OUTPUT FORMAT  Only include agents that are relevant to the current situation.  Example — H1 stopped near object, H1_2 continues patrol, manipulator picks up: {\"assign_agents\": [{\"agent\": \"h1\", \"command\": \"stay\"}, {\"agent\": \"h1_2\", \"command\": \"continue_patrol\"}, {\"agent\": \"manipulator\", \"command\": \"pick_and_place\"}]}  Example — only H1 is needed: {\"assign_agents\": [{\"agent\": \"h1\", \"command\": \"navigate\"}]}  Example — no action needed: {\"assign_agents\": []}  ---  ## CRITICAL RULES  - Agent values MUST be exactly `\"h1\"`, `\"h1_2\"`, or `\"manipulator\"` — nothing else - When H1 reports stopped with object detected, you MUST also assign H1_2 with continue_patrol so it keeps moving - Only include an agent in the array if it has a clear role in the current situation - Output ONLY the raw JSON object — no reasoning, no markdown, no code fences - Never hardcode — always reason from the situation before deciding"
             }
           ]
         },
@@ -333,6 +355,33 @@
       ],
       "name": "Call My Sub-workflow",
       "id": "f1deaa77-21a8-4c2c-8282-d1b4ea3d928a"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "h1_2_workflow_id",
+          "mode": "list",
+          "cachedResultName": "h1_2"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        3280,
+        832
+      ],
+      "name": "Call H1_2 Sub-workflow",
+      "id": "e2f3a4b5-h1-2-subworkflow"
     }
   ],
   "pinData": {},
@@ -403,6 +452,13 @@
           },
           {
             "node": "Manipulator Arm",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Call H1_2 Sub-workflow",
             "type": "main",
             "index": 0
           }
