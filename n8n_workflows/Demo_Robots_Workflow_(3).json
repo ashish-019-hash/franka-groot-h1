@@ -377,6 +377,19 @@
           "name": "MQTT account"
         }
       }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Both H1 and H1_2 spotted the object.\n// Command Center (NEXUS) has decided:\n//   - H1 is closer to the object → H1 will stop and handle pickup\n//   - H1_2 continues patrol ahead without disturbance\n// This node receives the LLM-decided command for H1_2 and passes it through.\n\nconst items = $input.all();\nreturn items.map(item => {\n  return {\n    json: {\n      agent: item.json.agent,\n      command: item.json.command,\n      context: `Both H1 and H1_2 detected the object. Command Center assigned ${item.json.agent} → ${item.json.command}. H1 handles pickup, H1_2 moves ahead.`\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3280,
+        1040
+      ],
+      "id": "a1b2c3d4-both-robots-spotted",
+      "name": "Both Robots Spotted Object \u2192 H1 Picks Up, H1_2 Continues"
     }
   ],
   "pinData": {},
@@ -429,7 +442,7 @@
       "main": [
         [
           {
-            "node": "H1_2 Control",
+            "node": "Both Robots Spotted Object \u2192 H1 Picks Up, H1_2 Continues",
             "type": "main",
             "index": 0
           }
@@ -518,6 +531,17 @@
             "node": "Merge",
             "type": "main",
             "index": 1
+          }
+        ]
+      ]
+    },
+    "Both Robots Spotted Object \u2192 H1 Picks Up, H1_2 Continues": {
+      "main": [
+        [
+          {
+            "node": "H1_2 Control",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
