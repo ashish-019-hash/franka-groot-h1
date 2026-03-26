@@ -441,15 +441,36 @@
       "name": "Check H1_2 Spotted"
     },
     {
-      "parameters": {},
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
+      "parameters": {
+        "mode": "manual",
+        "duplicateItem": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1-cc-result-decision",
+              "name": "command_center_decision",
+              "value": "={{ $json.output?.assign_agents ? $json.output.assign_agents.map(a => a.agent + ' → ' + a.command).join(' | ') : 'No assignments' }}",
+              "type": "string"
+            },
+            {
+              "id": "a2-cc-result-summary",
+              "name": "command_center_summary",
+              "value": "={{ $json.output?.assign_agents ? 'Both robots spotted the object. Command Center assigned: ' + $json.output.assign_agents.map(a => a.agent + ' → ' + a.command).join(', ') : 'Awaiting decision' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
       "position": [
         2660,
         208
       ],
       "id": "f6a7b8c9-cc-decision-node",
-      "name": "Both Robots Spotted: H1 Stops, H1_2 Patrols"
+      "name": "Command Center Result"
     }
   ],
   "pinData": {},
@@ -537,14 +558,14 @@
       "main": [
         [
           {
-            "node": "Both Robots Spotted: H1 Stops, H1_2 Patrols",
+            "node": "Command Center Result",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Both Robots Spotted: H1 Stops, H1_2 Patrols": {
+    "Command Center Result": {
       "main": [
         [
           {
