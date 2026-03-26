@@ -441,20 +441,15 @@
       "name": "Check H1_2 Spotted"
     },
     {
-      "parameters": {
-        "content": "## \ud83e\udd16 Command Center Decision\n\n**Both H1 and H1_2 spotted the object in the warehouse.**\n\nThe Robot Command Center (NEXUS) receives status from both robots and decides:\n\n- **H1 (h1)** \u2192 **Stop** near the object \u2014 H1 is closer and better positioned for pickup\n- **H1_2 (h1_2)** \u2192 **Continue patrol** ahead \u2014 H1_2 is not in line with the object\n- **Manipulator** \u2192 **Pick and place** \u2014 Franka arm picks up the object once H1 has stopped\n\n---\n\n**Path 1:** H1 reports `stopped` \u2192 `comman_center_listener` \u2192 `Check CC Stopped` \u2192 NEXUS decides\n\n**Path 2:** H1_2 reports `object_spotted` \u2192 `h1_2_status_listener` \u2192 `Check H1_2 Spotted` \u2192 NEXUS decides\n\nAll decisions are made dynamically by the LLM \u2014 nothing is hardcoded.",
-        "height": 434,
-        "width": 480,
-        "color": 4
-      },
-      "type": "n8n-nodes-base.stickyNote",
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        2400,
-        -220
+        2660,
+        208
       ],
-      "id": "e5f6a7b8-cc-decision-sticky",
-      "name": "CC Decision Overview"
+      "id": "f6a7b8c9-cc-decision-node",
+      "name": "Both Robots Spotted: H1 Stops, H1_2 Patrols"
     }
   ],
   "pinData": {},
@@ -539,6 +534,17 @@
       ]
     },
     "Robot Command Center": {
+      "main": [
+        [
+          {
+            "node": "Both Robots Spotted: H1 Stops, H1_2 Patrols",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Both Robots Spotted: H1 Stops, H1_2 Patrols": {
       "main": [
         [
           {
