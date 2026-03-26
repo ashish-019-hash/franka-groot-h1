@@ -366,8 +366,8 @@
       "type": "n8n-nodes-base.mqtt",
       "typeVersion": 1,
       "position": [
-        3280,
-        832
+        2480,
+        560
       ],
       "id": "e2f3a4b5-h1-2-mqtt-control",
       "name": "H1_2 Control",
@@ -380,13 +380,13 @@
     },
     {
       "parameters": {
-        "jsCode": "// Both H1 and H1_2 spotted the object.\n// Command Center (NEXUS) has decided:\n//   - H1 is closer to the object → H1 will stop and handle pickup\n//   - H1_2 continues patrol ahead without disturbance\n// This node receives the LLM-decided command for H1_2 and passes it through.\n\nconst items = $input.all();\nreturn items.map(item => {\n  return {\n    json: {\n      agent: item.json.agent,\n      command: item.json.command,\n      context: `Both H1 and H1_2 detected the object. Command Center assigned ${item.json.agent} → ${item.json.command}. H1 handles pickup, H1_2 moves ahead.`\n    }\n  };\n});"
+        "jsCode": "// Both H1 and H1_2 spotted the object in the simulation.\n// H1 has stopped near the object and reported to Command Center via MQTT.\n// This node fires IMMEDIATELY on the fast path — no LLM delay.\n// It reads the incoming MQTT data and instructs H1_2 accordingly.\n\nconst items = $input.all();\nreturn items.map(item => {\n  // Parse the raw MQTT message from command_center/topic\n  let data = item.json;\n  if (typeof data.message === 'string') {\n    try { data = JSON.parse(data.message); } catch(e) { data = item.json; }\n  } else if (data.message && typeof data.message === 'object') {\n    data = data.message;\n  }\n\n  const reportingAgent = data.agent || 'h1';\n  const status = data.status || '';\n  const detail = data.message || '';\n\n  // Determine H1_2 command based on the situation\n  let h1_2_command = 'standby';\n  if (status === 'stopped' || status === 'object_detected') {\n    h1_2_command = 'continue_patrol';\n  }\n\n  return {\n    json: {\n      agent: 'h1_2',\n      command: h1_2_command,\n      context: `Both robots detected the object. ${reportingAgent} reported status: ${status}. ${detail} Command Center instructs H1_2: ${h1_2_command}.`\n    }\n  };\n});"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3280,
-        1040
+        2256,
+        560
       ],
       "id": "a1b2c3d4-both-robots-spotted",
       "name": "Both Robots Spotted Object \u2192 H1 Picks Up, H1_2 Continues"
@@ -442,7 +442,7 @@
       "main": [
         [
           {
-            "node": "Both Robots Spotted Object \u2192 H1 Picks Up, H1_2 Continues",
+            "node": "H1_2 Control",
             "type": "main",
             "index": 0
           }
@@ -498,6 +498,11 @@
     "Check CC Stopped": {
       "main": [
         [
+          {
+            "node": "Both Robots Spotted Object \u2192 H1 Picks Up, H1_2 Continues",
+            "type": "main",
+            "index": 0
+          },
           {
             "node": "Robot Command Center",
             "type": "main",
