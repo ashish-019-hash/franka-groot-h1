@@ -37,7 +37,7 @@
     },
     {
       "parameters": {
-        "jsonSchemaExample": "{\n\t\"assign_agents\":[{\"agent\":\"h1\",\"command\":\"Reduce your velocity\"},{\"agent\":\"manipulator\",\"command\":\"Stop moving\"}]\n}"
+        "jsonSchemaExample": "{\n\t\"assign_agents\":[{\"agent\":\"h1\",\"command\":\"Reduce your velocity\"},{\"agent\":\"h1_2\",\"command\":\"Continue patrolling\"},{\"agent\":\"manipulator\",\"command\":\"Stop moving\"}]\n}"
       },
       "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
       "typeVersion": 1.3,
@@ -66,6 +66,28 @@
       "parameters": {
         "rules": {
           "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "a1b2c3d4-h1-2-route",
+                    "leftValue": "={{ $json.agent }}",
+                    "rightValue": "h1_2",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
             {
               "conditions": {
                 "options": {
@@ -131,7 +153,7 @@
         "messages": {
           "messageValues": [
             {
-              "message": "You are NEXUS — a robot command center brain. You receive situational updates and decide which agents to activate and what commands to assign. You output ONLY raw valid JSON. No thinking, no explanation, no markdown, no code fences.  ---  ## YOUR AGENTS  **H1** (`\"h1\"`) - Role: Mobile scout and carrier - Key trait: Navigates environments and detects/transports objects, but lacks fine manipulation  **MANIPULATOR** (`\"manipulator\"`) - Role: Franka robotic arm mounted on a Ridgeback mobile base - Key trait: Precision pick-and-place expert — activates when H1 has positioned near a target  ---  ## YOUR JOB AS NEXUS  When you receive a situational update: 1. Analyze the situation 2. Decide WHICH agent(s) are needed — do NOT include agents that have nothing to do 3. Decide WHAT command each active agent should receive  ---  ## AVAILABLE COMMANDS  \n Command         \n Assigned To  \n When                                              \n \n-----------------\n--------------\n---------------------------------------------------\n \n `\"pick_and_place\"` \n manipulator \n Object is in range and H1 has stopped near it  \n \n `\"stay\"`        \n h1           \n H1 should hold position and wait                  \n \n `\"navigate\"`    \n h1           \n H1 should move to a location                      \n \n `\"standby\"`     \n either       \n Agent should idle, nothing for it to do right now \n  ---  ## OUTPUT FORMAT  Only include agents that are relevant to the current situation.  Example — only H1 is needed: {\"assign_agents\": [{\"agent\": \"h1\", \"command\": \"navigate\"}]}  Example — both agents are needed: {\"assign_agents\": [{\"agent\": \"h1\", \"command\": \"stay\"}, {\"agent\": \"manipulator\", \"command\": \"pick_and_place\"}]}  Example — no action needed: {\"assign_agents\": []}  ---  ## CRITICAL RULES  - Agent values MUST be exactly `\"h1\"` or `\"manipulator\"` — nothing else - Only include an agent in the array if it has a clear role in the current situation - Output ONLY the raw JSON object — no reasoning, no markdown, no code fences - Never hardcode — always reason from the situation before deciding"
+              "message": "You are NEXUS, a multi-robot command center. You receive situational status updates from robots and decide what each robot should do next based on the situation. Output ONLY valid JSON \u2014 no explanation, no markdown, no code fences.\n\nAGENTS:\n- \"h1\": Mobile scout robot. Can navigate, stop, and hold position near objects.\n- \"h1_2\": Secondary scout robot. Can patrol, hold position, or navigate.\n- \"manipulator\": Franka robotic arm on a mobile base. Can perform pick-and-place operations.\n\nAVAILABLE COMMANDS:\n- \"stay\": Hold current position\n- \"navigate\": Move toward a target\n- \"continue_patrol\": Continue patrolling the area\n- \"pick_and_place\": Perform a pick-and-place operation\n- \"standby\": Idle, no action needed\n\nRULES:\n1. Analyze the incoming status update and determine what each relevant agent should do\n2. Agent values must be exactly \"h1\", \"h1_2\", or \"manipulator\"\n3. Only include agents that have a role in the current situation\n4. Output ONLY the raw JSON object \u2014 nothing else\n\nEXAMPLE OUTPUT:\n{\"assign_agents\": [{\"agent\": \"h1\", \"command\": \"stay\"}, {\"agent\": \"h1_2\", \"command\": \"continue_patrol\"}, {\"agent\": \"manipulator\", \"command\": \"pick_and_place\"}]}\n\nEXAMPLE OUTPUT (single agent):\n{\"assign_agents\": [{\"agent\": \"h1\", \"command\": \"navigate\"}]}"
             }
           ]
         },
@@ -333,6 +355,103 @@
       ],
       "name": "Call My Sub-workflow",
       "id": "f1deaa77-21a8-4c2c-8282-d1b4ea3d928a"
+    },
+    {
+      "parameters": {
+        "topic": "h1_2/control",
+        "sendInputData": false,
+        "message": "={\"agent\":\"h1_2\",\"command\":\"{{ $json.command }}\"}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mqtt",
+      "typeVersion": 1,
+      "position": [
+        3280,
+        832
+      ],
+      "id": "e2f3a4b5-h1-2-mqtt-control",
+      "name": "H1_2 Control",
+      "credentials": {
+        "mqtt": {
+          "id": "ghqbxQn6zwOGFKzq",
+          "name": "MQTT account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "topics": "h1_2/status",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mqttTrigger",
+      "typeVersion": 1,
+      "position": [
+        1600,
+        640
+      ],
+      "id": "b2c3d4e5-h1-2-status-listener",
+      "name": "h1_2_status_listener",
+      "credentials": {
+        "mqtt": {
+          "id": "ghqbxQn6zwOGFKzq",
+          "name": "MQTT account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.message?.status || $json.status || '' }}",
+              "rightValue": "object_spotted",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "id": "c3d4e5f6-check-h1-2-spotted"
+            },
+            {
+              "leftValue": "={{ JSON.stringify($json) }}",
+              "rightValue": "object_spotted",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              },
+              "id": "c3d4e5f6-check-h1-2-fallback"
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1832,
+        640
+      ],
+      "id": "d4e5f6a7-check-h1-2-spotted",
+      "name": "Check H1_2 Spotted"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Command Center Result: enrich LLM output with decision context\nconst items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const data = { ...item.json };\n  const agents = data.output?.assign_agents || [];\n\n  // Determine situation from agent assignments\n  const h1Assignment = agents.find(a => a.agent === 'h1');\n  const h1_2Assignment = agents.find(a => a.agent === 'h1_2');\n  const manipulatorAssignment = agents.find(a => a.agent === 'manipulator');\n\n  // If H1 is stopping (stay) and H1_2 exists, ensure H1_2 continues patrol\n  if (h1Assignment && h1Assignment.command === 'stay') {\n    if (!h1_2Assignment) {\n      agents.push({ agent: 'h1_2', command: 'continue_patrol' });\n    }\n    if (manipulatorAssignment && manipulatorAssignment.command === 'pick_and_place') {\n      data.command_center_summary = 'Both robots spotted the object. ' +\n        'H1 is closest \u2014 stopping near the object for pickup. ' +\n        'H1_2 continues patrolling ahead. ' +\n        'Manipulator will perform pick and place.';\n    } else {\n      data.command_center_summary = 'H1 is holding position. H1_2 continues patrol.';\n    }\n  } else if (h1_2Assignment && !h1Assignment) {\n    data.command_center_summary = 'H1_2 spotted the object but H1 is handling it. H1_2 continues patrol.';\n  } else {\n    data.command_center_summary = 'Command Center evaluated the situation and assigned agents.';\n  }\n\n  // Build decision string from actual assignments\n  data.command_center_decision = agents.map(a => a.agent + ' \u2192 ' + a.command).join(' | ');\n\n  // Preserve the output structure for Split Out\n  data.output = data.output || {};\n  data.output.assign_agents = agents;\n\n  results.push({ json: data });\n}\n\nreturn results;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2660,
+        208
+      ],
+      "id": "f6a7b8c9-cc-decision-node",
+      "name": "Command Center Result"
     }
   ],
   "pinData": {},
@@ -385,6 +504,13 @@
       "main": [
         [
           {
+            "node": "H1_2 Control",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
             "node": "Call My Sub-workflow",
             "type": "main",
             "index": 0
@@ -413,11 +539,45 @@
       "main": [
         [
           {
+            "node": "Command Center Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Command Center Result": {
+      "main": [
+        [
+          {
             "node": "Split Out",
             "type": "main",
             "index": 0
           }
         ]
+      ]
+    },
+    "h1_2_status_listener": {
+      "main": [
+        [
+          {
+            "node": "Check H1_2 Spotted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check H1_2 Spotted": {
+      "main": [
+        [
+          {
+            "node": "Robot Command Center",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
       ]
     },
     "comman_center_listener": {
@@ -435,7 +595,7 @@
       "main": [
         [
           {
-            "node": "Split Out",
+            "node": "Robot Command Center",
             "type": "main",
             "index": 0
           }
