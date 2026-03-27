@@ -3610,8 +3610,8 @@ CAMERA_WIDTH = 640
 CAMERA_HEIGHT = 480
 DEFAULT_CAMERA_PRIM = "/World/EyeCamera"
 
-FORWARD_SPEED = 1.0
-H1_2_FORWARD_SPEED = 0.3  # H1_2 walks slowly
+FORWARD_SPEED = 0.7  # H1 walking speed
+H1_2_FORWARD_SPEED = 0.4  # H1_2 walks slowly
 QUERY_INTERVAL_SECONDS = 0.3
 WARMUP_SECONDS = 3.0
 ROBOT_STOP_DISTANCE = 1.5  # meters from object where H1 should stop
